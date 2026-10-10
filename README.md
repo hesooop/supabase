@@ -42,3 +42,17 @@ npm run verify:rls
 ```
 
 - Without image transformations (free plan), thumbnails fall back to the original public URL.
+
+## Deploy with Docker
+
+`NEXT_PUBLIC_*` values are baked in at build time:
+
+```sh
+docker build -t supa-storage \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key> .
+docker run -d --name supa-storage --restart unless-stopped --memory 256m \
+  -p 127.0.0.1:3001:3000 supa-storage
+```
+
+Put a reverse proxy with TLS (e.g. 1Panel OpenResty, Caddy, nginx) in front of port 3001, and set the public URL as the Supabase Auth Site URL / redirect URL.
