@@ -12,5 +12,7 @@ export function serverSupabaseUrl() {
 }
 
 export function browserSupabaseUrl() {
-  return publicUrl.startsWith("/") ? `${window.location.origin}${publicUrl}` : publicUrl;
+  if (!publicUrl.startsWith("/")) return publicUrl;
+  // Client components also render once on the server, where there is no window.
+  return typeof window === "undefined" ? serverSupabaseUrl() : `${window.location.origin}${publicUrl}`;
 }
