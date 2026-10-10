@@ -11,11 +11,29 @@ const check = (name, cond) => {
   if (!cond) failed++;
 };
 
+// With SUPABASE_SERVICE_ROLE_KEY set (e.g. hosted projects that require email confirmation),
+// test users are created pre-confirmed via the admin API and deleted afterwards.
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const admin = serviceKey
+  ? createClient(url, serviceKey, { auth: { persistSession: false } })
+  : null;
+const createdUsers = [];
+
 async function newUser() {
   const c = createClient(url, anonKey, { auth: { persistSession: false } });
   const email = `rls-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
-  const { data, error } = await c.auth.signUp({ email, password: "password123" });
+  const password = "password123";
+  if (admin) {
+    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    if (error) throw error;
+    createdUsers.push(data.user.id);
+    const signIn = await c.auth.signInWithPassword({ email, password });
+    if (signIn.error) throw signIn.error;
+    return { c, id: data.user.id };
+  }
+  const { data, error } = await c.auth.signUp({ email, password });
   if (error) throw error;
+  if (!data.session) throw new Error("Sign-up requires email confirmation; set SUPABASE_SERVICE_ROLE_KEY");
   return { c, id: data.user.id };
 }
 
@@ -82,6 +100,17 @@ const txt = await a.c.storage
   .from("public-assets")
   .upload(`${a.id}/note.txt`, Buffer.from("hi"), { contentType: "text/plain" });
 check("[public-assets] non-image MIME rejected by bucket config", !!txt.error);
+
+if (admin) {
+  for (const id of createdUsers) {
+    for (const bucket of ["public-assets", "private-files"]) {
+      const { data } = await admin.storage.from(bucket).list(id);
+      if (data?.length) await admin.storage.from(bucket).remove(data.map((f) => `${id}/${f.name}`));
+    }
+    await admin.auth.admin.deleteUser(id);
+  }
+  console.log(`Cleaned up ${createdUsers.length} test user(s)`);
+}
 
 console.log(failed ? `\n${failed} check(s) failed` : "\nAll RLS checks passed");
 process.exit(failed ? 1 : 0);

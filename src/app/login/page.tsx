@@ -11,19 +11,26 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } =
+    setInfo(null);
+    const { data, error } =
       mode === "signin"
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) {
       setError(error.message);
+      return;
+    }
+    if (!data.session) {
+      setInfo("注册成功，请查收确认邮件，点击链接确认后再回来登录。");
+      setMode("signin");
       return;
     }
     router.replace("/");
@@ -57,6 +64,7 @@ export default function LoginPage() {
           className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
+        {info && <p className="text-sm text-emerald-700">{info}</p>}
         <button
           disabled={loading}
           className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg py-2 font-medium"

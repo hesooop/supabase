@@ -28,3 +28,17 @@ supabase db push               # 把建桶和 RLS migration 推到线上
 然后在 `.env.local` 或部署平台里设置 `NEXT_PUBLIC_SUPABASE_URL` 和 `NEXT_PUBLIC_SUPABASE_ANON_KEY`。
 
 > 注意：图片变换 API（缩略图）在线上需要 Pro 套餐；没有的话缩略图会加载失败，原图链接不受影响。
+
+### Hosted project notes
+
+- Hosted projects require email confirmation by default: after sign-up the app asks the user to confirm via email, then sign in. Add your deployed URL to **Authentication → URL Configuration** (Site URL / Redirect URLs) so confirmation links point to it.
+- Run the RLS checks against a hosted project (test users are created pre-confirmed and deleted afterwards):
+
+```sh
+SUPABASE_URL=https://<project-ref>.supabase.co \
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key> \
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+npm run verify:rls
+```
+
+- Without image transformations (free plan), thumbnails fall back to the original public URL.

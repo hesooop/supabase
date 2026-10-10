@@ -21,6 +21,7 @@ type Entry = {
   mimetype: string;
   updatedAt: string | null;
   thumb?: string;
+  thumbFallback?: string;
 };
 
 function formatSize(bytes: number) {
@@ -93,9 +94,11 @@ export default function FileManager({ userId, email }: { userId: string; email: 
     const images = list.filter((e) => !e.isFolder && isImage(e.mimetype));
     if (bucket === "public-assets") {
       images.forEach((e) => {
-        e.thumb = store.getPublicUrl(`${prefix}/${e.name}`, {
+        const full = `${prefix}/${e.name}`;
+        e.thumb = store.getPublicUrl(full, {
           transform: { width: 320, height: 320, resize: "cover" },
         }).data.publicUrl;
+        e.thumbFallback = store.getPublicUrl(full).data.publicUrl;
       });
     } else if (images.length) {
       const { data: signed } = await store.createSignedUrls(
@@ -351,7 +354,17 @@ export default function FileManager({ userId, email }: { userId: string; email: 
                       <span className="flex h-full items-center justify-center text-5xl">📁</span>
                     ) : e.thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={e.thumb} alt={e.name} className="w-full h-full object-cover" loading="lazy" />
+                      <img
+                        src={e.thumb}
+                        alt={e.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(ev) => {
+                          if (e.thumbFallback && ev.currentTarget.src !== e.thumbFallback) {
+                            ev.currentTarget.src = e.thumbFallback;
+                          }
+                        }}
+                      />
                     ) : (
                       <span className="flex h-full items-center justify-center text-sm font-mono text-slate-500 uppercase">
                         {e.name.split(".").pop()}
