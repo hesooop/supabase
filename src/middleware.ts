@@ -26,13 +26,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Redirects must carry any refreshed auth cookies, otherwise the browser keeps a consumed refresh token.
+  const redirectTo = (path: string) => {
+    const redirect = NextResponse.redirect(new URL(path, request.url));
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    redirect.headers.set("Cache-Control", "no-store");
+    return redirect;
+  };
+
   const isLogin = request.nextUrl.pathname.startsWith("/login");
-  if (!user && !isLogin) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-  if (user && isLogin) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  if (!user && !isLogin) return redirectTo("/login");
+  if (user && isLogin) return redirectTo("/");
   return response;
 }
 
